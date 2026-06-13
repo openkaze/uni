@@ -1,6 +1,7 @@
 package uni
 
 import (
+	"encoding/json"
 	"sync"
 )
 
@@ -8,10 +9,7 @@ type Module interface {
 	UniModule() ModuleInfo
 }
 
-// module id
 type ModuleID string
-
-// module runtime tag
 type ModuleTag string
 
 type ModuleInfo struct {
@@ -24,27 +22,22 @@ type ModuleInstance struct {
 	Mod Module
 }
 
+type Configurable interface {
+	Configure(ctx *ConfigContext, raw json.RawMessage) error
+}
+
+// JSON 配置 → 反序列化成模块结构体 → 调用 Provision() 建立引用和内部状态(Ready) → (安全替换后) 调用 Start() 模块正式开始工作
+type Provisioner interface {
+	Provision(ctx *Context) error
+}
+
+var (
+	moduleRegistry = make(map[ModuleID]*ModuleInfo)
+	registryMu     sync.RWMutex
+)
+
 func RegisterModule(info ModuleInfo) {
 	registryMu.Lock()
 	defer registryMu.Unlock()
 	moduleRegistry[info.ID] = &info
 }
-
-// Provisioner 允许组件在启动时去容器里“捞”其他依赖
-type Provisioner interface {
-	Provision(ctx *Context) error
-}
-
-type Validator interface {
-	Validate() error
-}
-
-type CleanerUpper interface {
-	Cleanup() error
-}
-
-// 全局的模块注册表（只存类型定义，不存运行实例）
-var (
-	moduleRegistry = make(map[ModuleID]*ModuleInfo)
-	registryMu     sync.RWMutex
-)

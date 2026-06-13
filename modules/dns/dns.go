@@ -4,21 +4,18 @@ import (
 	"encoding/json"
 
 	"github.com/openkaze/uni"
-	"github.com/openkaze/uni/uniconfig"
 )
 
-// 3.2 父 Module 定义
 type DnsModule struct {
-	Cache      bool               `json:"cache"`
-	Forwarders []*ForwarderModule // 依然保持对子组件的感知
+	Cache      bool `json:"cache"`
+	Forwarders []*ForwarderModule
 }
 
 func (m *DnsModule) UniModule() uni.ModuleInfo {
 	return uni.ModuleInfo{ID: "dns", New: func() uni.Module { return &DnsModule{} }}
 }
 
-// 核心：由父模块利用通用的 ConfigContext 来解析并提升子模块
-func (m *DnsModule) Configure(ctx *uniconfig.ConfigContext, raw json.RawMessage) error {
+func (m *DnsModule) Configure(ctx *uni.ConfigContext, raw json.RawMessage) error {
 	var shadow struct {
 		Cache     bool              `json:"cache"`
 		Forwarder []json.RawMessage `json:"forwarder"`
@@ -28,9 +25,8 @@ func (m *DnsModule) Configure(ctx *uniconfig.ConfigContext, raw json.RawMessage)
 	}
 	m.Cache = shadow.Cache
 
-	// 动态解析嵌套的子盲盒
 	for _, fRaw := range shadow.Forwarder {
-		// 动态通过框架加载子组件，子组件会在底层自动被“提升”到全局的 Instances 中
+		// 直接通过 uni 的上下文动态加载并提升子模块
 		subMod, _, err := ctx.LoadSubModule("dns.forwarder", fRaw)
 		if err != nil {
 			return err

@@ -1,15 +1,13 @@
 package uni
 
 import (
-	"context"
+	"encoding/json"
 	"fmt"
-	"sync/atomic"
 )
 
-// Runtime 容器
 type Runtime struct {
 	Instances     map[ModuleTag]*ModuleInstance
-	PreDefineTags map[ModuleTag]bool // 存放顶级无 Tag 模块的隐式 Tag
+	PreDefineTags map[ModuleTag]bool
 }
 
 func (r *Runtime) FindInstance(tag ModuleTag) (Module, error) {
@@ -20,32 +18,55 @@ func (r *Runtime) FindInstance(tag ModuleTag) (Module, error) {
 	return inst.Mod, nil
 }
 
-func (r *Runtime) Start() {}
-
-func (r *Runtime) Stop(ctx context.Context) {}
-
-// Controller 负责管理运行时的生命周期和热重载
-type Controller struct {
-	// 使用原子指针，保证并发读写安全
-	current atomic.Pointer[Runtime]
-}
-
-// GetRuntime 供业务协程调用，获取当前的运行时（无锁，极快）
-func (c *Controller) GetRuntime() *Runtime {
-	return c.current.Load()
-}
-
-func (c *Controller) Reload(configData []byte) error {
-	newRuntime := &Runtime{
-		Instances:     make(map[ModuleTag]*ModuleInstance),
-		PreDefineTags: make(map[ModuleTag]bool),
+// Init 核心动态解析：将顶级配置转为泛型 Map
+func (r *Runtime) Init(configData []byte) error {
+	var topLevelConfig map[string]json.RawMessage
+	if err := json.Unmarshal(configData, &topLevelConfig); err != nil {
+		return fmt.Errorf("invalid json format: %w", err)
 	}
-	if err := newRuntime.Init(configData); err != nil {
-		return err
+
+	cfgCtx := &ConfigContext{runtime: r}
+
+	// 1. 预先登记顶级的隐式 Tag
+	for key := range topLevelConfig {
+		r.PreDefineTags[ModuleTag(key)] = true
 	}
-	if err := newRuntime.InitAll(); err != nil {
-		return err
+
+	// 2. 动态创建并配置顶级模块
+	for key, raw := range topLevelConfig {
+		modID := ModuleID(key)
+
+		registryMu.RLock()
+		info, exists := moduleRegistry[modID]
+		registryMu.RUnlock()
+		if !exists {
+			return fmt.Errorf("unknown top-level module: %s", key)
+		}
+
+		mod := info.New()
+		if cfg, ok := mod.(Configurable); ok {
+			if err := cfg.Configure(cfgCtx, raw); err != nil {
+				return fmt.Errorf("failed to configure module '%s': %w", key, err)
+			}
+		}
+
+		finalTag := ModuleTag(modID)
+		r.Instances[finalTag] = &ModuleInstance{Tag: finalTag, Mod: mod}
 	}
-	c.current.Swap(newRuntime)
 	return nil
 }
+
+func (r *Runtime) InitAll() error {
+	ctx := &Context{runtime: r}
+	for _, inst := range r.Instances {
+		if provisioner, ok := inst.Mod.(Provisioner); ok {
+			if err := provisioner.Provision(ctx); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *Runtime) Start() {}
+func (r *Runtime) Stop()  {}
