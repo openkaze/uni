@@ -1,6 +1,6 @@
 package main
 
-import "uni/cmd"
+import "github.com/openkaze/uni/cmd"
 
 func main() {
 	cmd.Main()

@@ -4,5 +4,7 @@
 package standard
 
 import (
+	_ "github.com/openkaze/uni/modules/dns"
+	_ "github.com/openkaze/uni/modules/httpclient"
 	_ "github.com/openkaze/uni/modules/log"
 )

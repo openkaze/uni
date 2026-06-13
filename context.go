@@ -4,3 +4,5 @@ package uni
 type Context struct {
 	runtime *Runtime
 }
+
+func (c *Context) FindInstance(tag ModuleTag) (Module, error) { return c.runtime.FindInstance(tag) }

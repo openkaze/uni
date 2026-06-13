@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"fmt"
@@ -8,15 +8,7 @@ import (
 
 var AppController uni.Controller
 
-func init() {
-	// 动态注册各个独立模块（框架内核不需要改动任何代码）
-	uni.RegisterModule(new(uni.LogModule).UniModule())
-	uni.RegisterModule(new(uni.HttpClientModule).UniModule())
-	uni.RegisterModule(new(uni.DnsModule).UniModule())
-	uni.RegisterModule(new(uni.ForwarderModule).UniModule())
-}
-
-func main() {
+func Main() {
 	// 你的目标测试 JSON
 	configJSON := []byte(`
 	{

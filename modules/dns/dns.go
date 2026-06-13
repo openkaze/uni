@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/openkaze/uni"
+	"github.com/openkaze/uni/uniconfig"
 )
 
 // 3.2 父 Module 定义
@@ -12,12 +13,12 @@ type DnsModule struct {
 	Forwarders []*ForwarderModule // 依然保持对子组件的感知
 }
 
-func (m *DnsModule) UniModule() ModuleInfo {
-	return uni.ModuleInfo{ID: "dns", New: func() Module { return &DnsModule{} }}
+func (m *DnsModule) UniModule() uni.ModuleInfo {
+	return uni.ModuleInfo{ID: "dns", New: func() uni.Module { return &DnsModule{} }}
 }
 
 // 核心：由父模块利用通用的 ConfigContext 来解析并提升子模块
-func (m *DnsModule) Configure(ctx *ConfigContext, raw json.RawMessage) error {
+func (m *DnsModule) Configure(ctx *uniconfig.ConfigContext, raw json.RawMessage) error {
 	var shadow struct {
 		Cache     bool              `json:"cache"`
 		Forwarder []json.RawMessage `json:"forwarder"`

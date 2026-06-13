@@ -8,6 +8,7 @@ IGNORE_FILES = [
     "go.sum",
     "LICENSE",
     "README.md",
+    "design.md"
 ]
 
 IGNORE_FOLDERS = [

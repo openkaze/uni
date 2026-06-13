@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/openkaze/uni"
+	"github.com/openkaze/uni/uniconfig"
 )
 
 type ForwarderModule struct {
@@ -14,6 +15,6 @@ type ForwarderModule struct {
 func (m *ForwarderModule) UniModule() uni.ModuleInfo {
 	return uni.ModuleInfo{ID: "dns.forwarder", New: func() uni.Module { return &ForwarderModule{} }}
 }
-func (m *ForwarderModule) Configure(ctx *ConfigContext, raw json.RawMessage) error {
+func (m *ForwarderModule) Configure(ctx *uniconfig.ConfigContext, raw json.RawMessage) error {
 	return json.Unmarshal(raw, m)
 }
