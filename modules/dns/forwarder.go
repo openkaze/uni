@@ -8,6 +8,7 @@ import (
 
 type ForwarderModule struct {
 	Tag  uni.ModuleTag `json:"tag"`
+	Type string        `json:"type" uni:"namespace=uni.dns.forwarder inline_key=type"`
 	Addr string        `json:"addr"`
 }
 

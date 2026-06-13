@@ -31,7 +31,5 @@ go.work.sum
 .idea/
 .vscode/
 
-# DEV
-doc/
-design.md
-file.py
+# dev
+temp/

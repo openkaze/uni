@@ -7,8 +7,8 @@ import (
 )
 
 type DnsModule struct {
-	Cache      bool `json:"cache"`
-	Forwarders []*ForwarderModule
+	Cache     bool `json:"cache"`
+	Forwarder []*ForwarderModule
 }
 
 func (m *DnsModule) UniModule() uni.ModuleInfo {
@@ -31,7 +31,7 @@ func (m *DnsModule) Configure(ctx *uni.ConfigContext, raw json.RawMessage) error
 		if err != nil {
 			return err
 		}
-		m.Forwarders = append(m.Forwarders, subMod.(*ForwarderModule))
+		m.Forwarder = append(m.Forwarder, subMod.(*ForwarderModule))
 	}
 	return nil
 }
