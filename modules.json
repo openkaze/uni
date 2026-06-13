@@ -1,0 +1,24 @@
+{
+    "log": {
+        "level": "INFO"
+    },
+    "resource": [
+        {
+            "tag": "waf.data.01",
+            "filepath": "./data.db"
+        }
+    ],
+    "waf": {
+        "enable": true,
+        "data": "waf.data.01"
+    },
+    "dns": {
+        "cache": true,
+        "forwarder": [
+            {
+                "tag": "google",
+                "addr": "8.8.8.8"
+            }
+        ]
+    }
+}

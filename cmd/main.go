@@ -1,0 +1,51 @@
+package main
+
+import (
+	"fmt"
+
+	"github.com/openkaze/uni"
+)
+
+var AppController uni.Controller
+
+func init() {
+	// 动态注册各个独立模块（框架内核不需要改动任何代码）
+	uni.RegisterModule(new(uni.LogModule).UniModule())
+	uni.RegisterModule(new(uni.HttpClientModule).UniModule())
+	uni.RegisterModule(new(uni.DnsModule).UniModule())
+	uni.RegisterModule(new(uni.ForwarderModule).UniModule())
+}
+
+func main() {
+	// 你的目标测试 JSON
+	configJSON := []byte(`
+	{
+		"log": {
+			"level": "INFO"
+		},
+		"http_client": {
+			"dns_provider": "google" 
+		},
+		"dns": {
+			"cache": true,
+			"forwarder": [
+				{
+					"tag": "google",
+					"addr": "8.8.8.8"
+				}
+			]
+		}
+	}`)
+
+	fmt.Println("=== 🛰️ 基于通用泛型 Map 开始加载 Runtime ===")
+	if err := AppController.Reload(configJSON); err != nil {
+		panic(err)
+	}
+
+	fmt.Println("\n=== 🔍 最终运行时打平拓扑校验 ===")
+	rt := AppController.GetRuntime()
+	for tag, inst := range rt.Instances {
+		isPre := rt.PreDefineTags[tag]
+		fmt.Printf("-> 全局可见 Tag: [%-12s] | 是否顶级隐式预留: %-5v | 内存指针: %p\n", tag, isPre, inst.Mod)
+	}
+}
