@@ -6,32 +6,43 @@ import (
 	"github.com/openkaze/uni"
 )
 
+func init() {
+	uni.RegisterModule(new(DnsModule))
+	uni.RegisterModule(new(DohForwarder))
+}
+
 type DnsModule struct {
-	Cache     bool `json:"cache"`
-	Forwarder []*ForwarderModule
+	Tag         string            `json:"tag"`
+	EnableCache bool              `json:"enable_cache"`
+	Forwarder   []json.RawMessage `json:"forwarder" uni:"namespace=dns.forwarder inline_key=type"`
 }
 
-func (m *DnsModule) UniModule() uni.ModuleInfo {
-	return uni.ModuleInfo{ID: "dns", New: func() uni.Module { return &DnsModule{} }}
+func (d *DnsModule) UniModule() uni.ModuleInfo {
+	return uni.ModuleInfo{
+		ID:  "dns",
+		New: func() uni.Module { return new(DnsModule) },
+	}
 }
 
-func (m *DnsModule) Configure(ctx *uni.ConfigContext, raw json.RawMessage) error {
-	var shadow struct {
-		Cache     bool              `json:"cache"`
-		Forwarder []json.RawMessage `json:"forwarder"`
-	}
-	if err := json.Unmarshal(raw, &shadow); err != nil {
-		return err
-	}
-	m.Cache = shadow.Cache
+func (d *DnsModule) Configure(ctx *uni.ConfigContext, raw json.RawMessage) error {
+	// Task 0 & Task 2: 一行流自动开箱并打平提升
+	return uni.ConfigureModule(ctx, d, raw)
+}
 
-	for _, fRaw := range shadow.Forwarder {
-		// 直接通过 uni 的上下文动态加载并提升子模块
-		subMod, _, err := ctx.LoadSubModule("dns.forwarder", fRaw)
-		if err != nil {
-			return err
-		}
-		m.Forwarder = append(m.Forwarder, subMod.(*ForwarderModule))
+// DohForwarder 真实子元件
+type DohForwarder struct {
+	Tag  string `json:"tag"`
+	Type string `json:"type"`
+	Addr string `json:"addr"`
+}
+
+func (d *DohForwarder) UniModule() uni.ModuleInfo {
+	return uni.ModuleInfo{
+		ID:  "dns.forwarder.doh",
+		New: func() uni.Module { return new(DohForwarder) },
 	}
-	return nil
+}
+
+func (d *DohForwarder) Configure(ctx *uni.ConfigContext, raw json.RawMessage) error {
+	return uni.ConfigureModule(ctx, d, raw)
 }

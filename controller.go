@@ -1,26 +1,38 @@
 package uni
 
-import "sync/atomic"
+import "sync"
 
 type Controller struct {
-	current atomic.Pointer[Runtime]
-}
-
-func (c *Controller) GetRuntime() *Runtime {
-	return c.current.Load()
+	mu      sync.Mutex
+	runtime *Runtime
 }
 
 func (c *Controller) Reload(configData []byte) error {
-	newRuntime := &Runtime{
-		Instances:     make(map[ModuleTag]*ModuleInstance),
-		PreDefineTags: make(map[ModuleTag]bool),
-	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	newRuntime := NewRuntime()
+
+	// Phase 1: 全量配置与实例登记
 	if err := newRuntime.Init(configData); err != nil {
 		return err
 	}
+
+	// Phase 2: 全量图状跨枝装配与验证
 	if err := newRuntime.InitAll(); err != nil {
 		return err
 	}
-	c.current.Swap(newRuntime)
+
+	// 替换老运行实体
+	if c.runtime != nil {
+		_ = c.runtime.Stop()
+	}
+	c.runtime = newRuntime
 	return nil
+}
+
+func (c *Controller) GetRuntime() *Runtime {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.runtime
 }

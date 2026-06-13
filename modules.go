@@ -17,27 +17,47 @@ type ModuleInfo struct {
 	New func() Module
 }
 
-type ModuleInstance struct {
-	Tag ModuleTag
-	Mod Module
-}
-
 type Configurable interface {
 	Configure(ctx *ConfigContext, raw json.RawMessage) error
 }
 
-// JSON 配置 → 反序列化成模块结构体 → 调用 Provision() 建立引用和内部状态(Ready) → (安全替换后) 调用 Start() 模块正式开始工作
 type Provisioner interface {
 	Provision(ctx *Context) error
 }
 
-var (
-	moduleRegistry = make(map[ModuleID]*ModuleInfo)
-	registryMu     sync.RWMutex
-)
+type Validator interface {
+	Validate() error
+}
 
-func RegisterModule(info ModuleInfo) {
+type Cleaner interface {
+	Cleanup() error
+}
+
+func RegisterModule(instance Module) {
+	info := instance.UniModule()
+
+	if info.ID == "" {
+		panic("uni: RegisterModule called with empty ModuleID")
+	}
+
+	if info.New == nil {
+		panic("uni: RegisterModule called with nil New func for module '" + string(info.ID) + "'")
+	}
+
+	if val := info.New(); val == nil {
+		panic("uni: RegisterModule: ModuleInfo.New returned nil for module '" + string(info.ID) + "'")
+	}
+
 	registryMu.Lock()
 	defer registryMu.Unlock()
-	moduleRegistry[info.ID] = &info
+	if _, exists := moduleRegistry[info.ID]; exists {
+		panic("uni: RegisterModule: duplicate registration of module '" + string(info.ID) + "'")
+	}
+
+	moduleRegistry[info.ID] = info
 }
+
+var (
+	moduleRegistry = make(map[ModuleID]ModuleInfo)
+	registryMu     sync.RWMutex
+)

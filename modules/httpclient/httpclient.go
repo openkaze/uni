@@ -5,32 +5,38 @@ import (
 	"fmt"
 
 	"github.com/openkaze/uni"
-	"github.com/openkaze/uni/modules/dns"
 )
 
+func init() {
+	uni.RegisterModule(new(HttpClientModule))
+}
+
 type HttpClientModule struct {
-	DnsProvider uni.ModuleTag `json:"dns_provider"`
-	dnsRef      *dns.ForwarderModule
+	Tag         string `json:"tag"`
+	DnsProvider string `json:"dns_provider"` // 存储方案 A 双引号关联的字符串别名
 }
 
-func (m *HttpClientModule) UniModule() uni.ModuleInfo {
-	return uni.ModuleInfo{ID: "http_client", New: func() uni.Module { return &HttpClientModule{} }}
-}
-
-func (m *HttpClientModule) Configure(ctx *uni.ConfigContext, raw json.RawMessage) error {
-	return json.Unmarshal(raw, m)
-}
-
-func (m *HttpClientModule) Provision(ctx *uni.Context) error {
-	ref, err := ctx.FindInstance(m.DnsProvider)
-	if err != nil {
-		return fmt.Errorf("http_client error: referenced tag '%s' does not exist", m.DnsProvider)
+func (h *HttpClientModule) UniModule() uni.ModuleInfo {
+	return uni.ModuleInfo{
+		ID:  "http_client",
+		New: func() uni.Module { return new(HttpClientModule) },
 	}
-	forwarder, ok := ref.(*dns.ForwarderModule)
-	if !ok {
-		return fmt.Errorf("http_client error: tag '%s' is not a dns.forwarder", m.DnsProvider)
+}
+
+func (h *HttpClientModule) Configure(ctx *uni.ConfigContext, raw json.RawMessage) error {
+	return uni.ConfigureModule(ctx, h, raw)
+}
+
+// Provision Task 2 & Task 3: 在第二阶段执行强类型图状挂载安全门禁校验
+func (h *HttpClientModule) Provision(ctx *uni.Context) error {
+	if h.DnsProvider != "" {
+		// 高亮执法：跨枝校验绑定的组件是否归属于 "dns.forwarder" 命名空间
+		inst, err := ctx.FindInstance("dns.forwarder", h.DnsProvider)
+		if err != nil {
+			return fmt.Errorf("http_client [%s] dependency bind error: %w", h.Tag, err)
+		}
+		fmt.Printf("[HttpClient][%s] -> 延迟绑定方案 A 指针成功! 目标 [%s] 实际注册身份为: (%s)\n",
+			h.Tag, h.DnsProvider, inst.UniModule().ID)
 	}
-	m.dnsRef = forwarder
-	fmt.Printf("[HttpClientModule] 🌲 跨越树枝引用成功！已精准绑定至全局提升的子模块 [%s] (地址: %s)\n", m.DnsProvider, forwarder.Addr)
 	return nil
 }

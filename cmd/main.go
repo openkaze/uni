@@ -3,41 +3,45 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/openkaze/uni"
+	_ "github.com/openkaze/uni/modules/standard"
 )
 
-var AppController uni.Controller
+const finalFlatConfig = `
+{
+    "log": {
+        "level": "INFO"
+    },
+    "dns": {
+        "enable_cache": true,
+        "forwarder": [
+            {
+                "type": "doh",
+                "tag": "dns.01",
+                "addr": "1.1.1.1"
+            }
+        ]
+    },
+    "http_client": [
+        {
+            "tag": "httpclient.01",
+            "dns_provider": "dns.01"
+        },
+        {
+            "tag": "httpclient.02",
+            "dns_provider": "dns.01"
+        }
+    ]
+}
+`
 
 func Main() {
-	// 你的目标测试 JSON
-	configJSON := []byte(`
-	{
-		"log": {
-			"level": "INFO"
-		},
-		"http_client": {
-			"dns_provider": "google" 
-		},
-		"dns": {
-			"cache": true,
-			"forwarder": [
-				{
-					"tag": "google",
-					"addr": "8.8.8.8"
-				}
-			]
-		}
-	}`)
+	fmt.Println("[Uni Engine] Commencing Time-Two-Phase Bus Booting...")
 
-	fmt.Println("=== 🛰️ 基于通用泛型 Map 开始加载 Runtime ===")
-	if err := AppController.Reload(configJSON); err != nil {
-		panic(err)
+	err := AppController.Reload([]byte(finalFlatConfig))
+	if err != nil {
+		panic(fmt.Sprintf("[Uni Engine] Critical Error: Boot Failed -> %v", err))
 	}
 
-	fmt.Println("\n=== 🔍 最终运行时打平拓扑校验 ===")
 	rt := AppController.GetRuntime()
-	for tag, inst := range rt.Instances {
-		isPre := rt.PreDefineTags[tag]
-		fmt.Printf("-> 全局可见 Tag: [%-12s] | 是否顶级隐式预留: %-5v | 内存指针: %p\n", tag, isPre, inst.Mod)
-	}
+	PrintLiveTopology(rt)
 }

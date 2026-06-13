@@ -6,14 +6,22 @@ import (
 	"github.com/openkaze/uni"
 )
 
+func init() {
+	uni.RegisterModule(new(LogModule))
+}
+
 type LogModule struct {
+	Tag   string `json:"tag"`
 	Level string `json:"level"`
 }
 
-func (m *LogModule) UniModule() uni.ModuleInfo {
-	return uni.ModuleInfo{ID: "log", New: func() uni.Module { return &LogModule{} }}
+func (l *LogModule) UniModule() uni.ModuleInfo {
+	return uni.ModuleInfo{
+		ID:  "log",
+		New: func() uni.Module { return new(LogModule) },
+	}
 }
 
-func (m *LogModule) Configure(ctx *uni.ConfigContext, raw json.RawMessage) error {
-	return json.Unmarshal(raw, m)
+func (l *LogModule) Configure(ctx *uni.ConfigContext, raw json.RawMessage) error {
+	return uni.ConfigureModule(ctx, l, raw)
 }
